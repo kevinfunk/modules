@@ -1,0 +1,29 @@
+{% for user in users %}
+  <div class="user">
+    <div class="user-image">
+      <div class="user-image-placeholder">
+        {% if user.image %}<img src="{{ user.image }}" alt="{{ user.name }}" />{% endif %}
+      </div>
+    </div>
+
+    <div class="user-infos">
+      <div class="user-name">{{ user.name }}</div>
+      <div class="user-roles">{{ user.roles }}</div>
+      <div class="user-content-count">
+        {% if user.workflows|length == 1 %}
+          {% set workflow = user.workflows|first %}
+          {{ workflow.label }} ({{ workflow.states|join(', ')|raw }})
+        {% elseif user.workflows|length > 1 %}
+          <ul>
+            {% for workflow in user.workflows %}
+              <li>{{ workflow.label }} ({{ workflow.states|join(', ')|raw }})</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          {{ 'No contributions'|t({}, { context: 'Content planner user dashboard widget' }) }}
+        {% endif %}
+      </div>
+      <div class="user-last-access"></div>
+    </div>
+  </div>
+{% endfor %}

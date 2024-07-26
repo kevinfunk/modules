@@ -1,0 +1,29 @@
+services:
+  content_calendar.calendar:
+    class: Drupal\content_calendar\Component\Calendar
+    shared: false
+    arguments:
+      - '@theme.manager'
+      - '@current_user'
+      - '@config.factory'
+      - '@content_planner.content_moderation_service'
+      - '@content_calendar.content_type_config_service'
+      - '@content_calendar.content_calendar_service'
+
+  content_calendar.content_service:
+    class: Drupal\content_calendar\ContentService
+    arguments: ['@entity_type.manager']
+
+  content_calendar.content_type_config_service:
+    class: Drupal\content_calendar\ContentTypeConfigService
+    arguments: ['@config.factory']
+
+  content_calendar.content_calendar_service:
+    class: Drupal\content_calendar\ContentCalendarService
+    arguments: ['@database', '@content_calendar.content_type_config_service']
+
+  content_calendar.scheduler_publish_subscriber:
+    class: Drupal\content_calendar\EventSubscriber\SchedulerPublishSubScriber
+    arguments: ['@module_handler']
+    tags:
+      - { name: event_subscriber }

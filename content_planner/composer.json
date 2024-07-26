@@ -1,0 +1,6 @@
+{
+  "name": "drupal/content_planner",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "description": "Plan your content using a Dashboard, the Content Calendar and Content Kanban."
+}

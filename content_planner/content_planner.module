@@ -1,0 +1,113 @@
+<?php
+
+/**
+ * @file
+ * Contains content_planner.module.
+ */
+
+use Drupal\Core\Url;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function content_planner_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.content_planner':
+      $output = '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Content Planner helps you to create, plan and manage content. It offers a dashboard, a content calendar and a todo list. It\'s completely open source and free to use. For more information, see the <a href=":documentation">online documentation for the Content Planner module</a>.', [':documentation' => 'https://www.drupal.org/docs/contributed-modules/content-planner']) . '</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function content_planner_theme($existing, $type, $theme, $path) {
+
+  return [
+
+    'content_planner_dashboard' => [
+      'variables' => [
+        'blocks' => [],
+      ],
+    ],
+
+    'content_planner_dashboard_block' => [
+      'variables' => [
+        'css_id' => NULL,
+        'has_permission' => FALSE,
+        'block_id' => NULL,
+        'name' => [],
+        'block' => [],
+      ],
+    ],
+
+    'content_planner_dashboard_user_block' => [
+      'variables' => [
+        'users' => [],
+      ],
+    ],
+
+  ];
+}
+
+/**
+ * Implements hook_toolbar().
+ */
+function content_planner_toolbar() {
+
+  $items = [];
+
+  $links['dashboard'] = [
+    '#type' => 'link',
+    '#title' => t('Dashboard'),
+    '#url' => Url::fromRoute('content_planner.dashboard'),
+    '#attributes' => [
+      'class' => 'toolbar-icon toolbar-icon-system-admin-reports',
+    ],
+
+  ];
+
+  $items['content_planner'] = [
+    '#type' => 'toolbar_item',
+    'tab' => [
+      '#type' => 'link',
+      '#title' => t('Content Planner'),
+      '#url' => Url::fromRoute('content_planner.dashboard'),
+      '#options' => [
+        'attributes' => [
+          'title' => t('Content Planner'),
+          'class' => [
+            'trigger',
+            'toolbar-item',
+            'toolbar-icon',
+            'toolbar-icon-system-admin-content',
+          ],
+        ],
+      ],
+    ],
+    'tray' => [
+      '#heading' => t('Content Planner sections'),
+      'links' => [
+        '#attributes' => [
+          'class' => ['toolbar-menu'],
+        ],
+        '#theme' => 'item_list',
+        '#items' => $links,
+      ],
+
+    ],
+    '#weight' => -10,
+    '#cache' => [
+      'contexts' => [
+        'user.permissions',
+      ],
+    ],
+  ];
+
+  if ((\Drupal::currentUser()->hasPermission('view content planner dashboard')) || (\Drupal::currentUser()->hasPermission('administer content planner dashboard settings'))) {
+    return $items;
+  }
+
+}

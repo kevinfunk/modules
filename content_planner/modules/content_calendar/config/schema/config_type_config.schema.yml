@@ -1,0 +1,28 @@
+content_calendar.content_type_config.*:
+  type: config_entity
+  label: 'Content Type Config config'
+  mapping:
+    id:
+      type: string
+      label: 'ID'
+    label:
+      type: label
+      label: 'Label'
+    uuid:
+      type: string
+    color:
+      type: string
+      label: 'Color'
+
+content_calendar.settings:
+  type: config_object
+  mapping:
+    show_user_thumb:
+      type: boolean
+      label: 'Show user thumbnail'
+    bg_color_unpublished_content:
+      type: string
+      label: 'Background color for unpublished content'
+    add_content_set_schedule_date:
+      type: boolean
+      label: 'Automatically schedule content when creating through the calendar'

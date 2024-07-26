@@ -1,0 +1,35 @@
+#dashboard-user-block {
+
+  .user {
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 1em;
+
+    .user-image-placeholder {
+      background-color: #e7e7e7;
+      border: 1px solid darkgray;
+      display: block;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+
+      img {
+        border-radius: inherit;
+      }
+    }
+
+    .user-image {
+      width: 50px;
+      height: 50px;
+      margin-right: 1em;
+    }
+
+    .user-name {
+      font-weight: bold;
+    }
+
+    .user-infos {
+      width: 100%;
+    }
+  }
+}
