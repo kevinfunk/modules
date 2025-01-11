@@ -1,0 +1,13 @@
+name: 'Piwik PRO'
+type: module
+description: 'Allows your site to be tracked by Piwik PRO.'
+package: Statistics
+core_version_requirement: ^9 || ^10 || ^11
+configure: piwik_pro.admin_settings_form
+dependencies:
+  - drupal:path_alias
+
+# Information added by Drupal.org packaging script on 2025-01-08
+version: '1.2.0'
+project: 'piwik_pro'
+datestamp: 1736340743

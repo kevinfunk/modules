@@ -1,0 +1,88 @@
+<?php
+
+/**
+ * @file
+ * Drupal Module: Piwik PRO.
+ *
+ * Adds the required code to allow tracking by Piwik PRO.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_help().
+ */
+function piwik_pro_help(string $route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.piwik_pro':
+      $output = '<h3>' . t('About', [], ['context' => 'Piwik PRO']) . '</h3>';
+      $output .= '<p>' . t('Piwik PRO is a GDPR-proof tracking tool that allows you to track user visits.', [], ['context' => 'Piwik PRO']) . '</p>';
+      $output .= '<h3>' . t('Uses', [], ['context' => 'Piwik PRO']) . '</h3>';
+      $output .= '<dt>' . t('Configuring Piwik PRO', [], ['context' => 'Piwik PRO']) . '</dt>';
+      $output .= '<dd>' . t('All settings for this module can be found on the <a href=":piwik_pro_settings">Piwik PRO settings</a> page. When entering the URL and site ID, you can start using the service. Additionally, you can specify pages not to track.', [':piwik_pro_settings' => Url::fromRoute('piwik_pro.admin_settings_form')->toString()], ['context' => 'Piwik PRO']) . '</dd>';
+      return $output;
+
+    case 'piwik_pro.admin_settings_form':
+      return t('<a href=":piwik_pro_url">Piwik PRO</a> is a GDPR-proof analytics tool. A free version is available (registration required).', [':piwik_pro_url' => 'https://piwik.pro/'], ['context' => 'Piwik PRO']);
+  }
+  return '';
+}
+
+/**
+ * Implements hook_page_bottom().
+ *
+ * Insert snippet to the appropriate scope/region of the page.
+ */
+function piwik_pro_page_top(array &$page) {
+  if ($snippet = Drupal::service('piwik_pro.snippet')->getSnippet()) {
+    $page['piwik_pro_snippet'] = [
+      '#type' => 'inline_template',
+      '#template' => '{{ piwik_pro_snippet|raw }}',
+      '#context' => [
+        'piwik_pro_snippet' => $snippet,
+      ],
+    ];
+  }
+}
+
+/**
+ * Remove deprecated 'Additional container (sync)' option.
+ *
+ * @see: https://help.piwik.pro/support/tag-manager/sunset-of-synchronous-containers-and-tags/
+ */
+function piwik_pro_update_9101() {
+  $config = Drupal::configFactory()->getEditable('piwik_pro.settings');
+  $config->clear('sync_snippet');
+  $config->save();
+}
+
+/**
+ * Add a new visibility restrictions options.
+ */
+function piwik_pro_update_9102() {
+  $config = Drupal::configFactory()->getEditable('piwik_pro.settings');
+
+  if (is_null($config->get('visibility.request_path_mode'))) {
+    $config->set('visibility.request_path_mode', 0);
+  }
+  if (is_null($config->get('visibility.request_path_pages'))) {
+    $config->set('visibility.request_path_pages', []);
+  }
+
+  if (is_null($config->get('visibility.user_role_mode'))) {
+    $config->set('visibility.user_role_mode', 0);
+  }
+  if (is_null($config->get('visibility.user_roles'))) {
+    $config->set('visibility.user_roles', []);
+  }
+
+  if (is_null($config->get('visibility.content_type_mode'))) {
+    $config->set('visibility.content_type_mode', 0);
+  }
+  if (is_null($config->get('visibility.content_types'))) {
+    $config->set('visibility.content_types', []);
+  }
+
+  $config->save();
+}

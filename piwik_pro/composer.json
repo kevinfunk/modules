@@ -1,0 +1,29 @@
+{
+    "name": "drupal/piwik_pro",
+    "description": "Piwik PRO is a free analytics provider.",
+    "type": "drupal-module",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Josha Hubbers",
+            "email": "josha@hubbers.info"
+        }
+    ],
+    "homepage": "https://www.drupal.org/project/piwik_pro",
+    "support": {
+        "issues": "https://drupal.org/project/issues/piwik_pro",
+        "source": "https://git.drupalcode.org/project/piwik_pro"
+    },
+    "require": {
+        "php": "^8.1",
+        "drupal/core": "^9 || ^10 || ^11"
+    },
+    "require-dev": {
+        "drupal/coder": "^8.3"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

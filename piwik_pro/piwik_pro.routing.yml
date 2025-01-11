@@ -1,0 +1,7 @@
+piwik_pro.admin_settings_form:
+  path: '/admin/config/services/piwik-pro'
+  defaults:
+    _form: '\Drupal\piwik_pro\Form\PiwikProAdminSettingsForm'
+    _title: 'Piwik PRO'
+  requirements:
+    _permission: 'administer piwik pro'

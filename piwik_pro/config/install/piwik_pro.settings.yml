@@ -1,0 +1,10 @@
+site_id: ''
+piwik_domain: ''
+data_layer: 'dataLayer'
+visibility:
+  request_path_mode: 0
+  request_path_pages: "/admin\n/admin/*\n/batch\n/node/add*\n/node/*/*\n/user/*/*"
+  user_role_mode: 0
+  user_roles: {  }
+  content_type_mode: 0
+  content_types: {  }

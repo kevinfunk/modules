@@ -1,0 +1,43 @@
+# Schema for the configuration files of the piwik_pro module.
+
+piwik_pro.settings:
+  type: config_object
+  label: 'Piwik PRO settings'
+  mapping:
+    site_id:
+      type: string
+      label: 'Account ID'
+    piwik_domain:
+      type: string
+      label: 'Piwik tracking domain'
+    data_layer:
+      type: string
+      label: 'Name of the data layer'
+    visibility:
+      type: mapping
+      label: 'Visibility'
+      mapping:
+        request_path_mode:
+          type: integer
+          label: 'Add tracking to specific pages'
+        request_path_pages:
+          type: string
+          label: 'Pages by their paths'
+        user_role_mode:
+          type: integer
+          label: 'Add tracking for specific roles'
+        user_roles:
+          type: sequence
+          label: 'Roles'
+          sequence:
+            type: string
+            label: 'role'
+        content_type_mode:
+          type: integer
+          label: 'Add tracking for specific Content Types'
+        content_types:
+          type: sequence
+          label: 'Content Types'
+          sequence:
+            type: string
+            label: 'Content Types'

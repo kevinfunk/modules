@@ -1,0 +1,11 @@
+services:
+  piwik_pro.snippet:
+    class: Drupal\piwik_pro\PiwikProSnippet
+    arguments:
+      - '@config.factory'
+      - '@path_alias.manager'
+      - '@path.matcher'
+      - '@path.current'
+      - '@current_user'
+      - '@entity_type.manager'
+      - '@current_route_match'
