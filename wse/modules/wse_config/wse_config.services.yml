@@ -11,11 +11,6 @@ services:
     tags:
       - { name: event_subscriber }
 
-  wse_config.storage:
-    class: Drupal\wse_config\WseConfigCachedStorage
-    decorates: config.storage
-    arguments: ['@wse_config.storage.active']
-
   wse_config.storage.active:
     class: Drupal\wse_config\WseConfigDatabaseStorage
     public: false
