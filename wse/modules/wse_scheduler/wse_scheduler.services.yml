@@ -1,0 +1,4 @@
+services:
+  wse_scheduler.publisher:
+    class: Drupal\wse_scheduler\ScheduledWorkspacePublisher
+    arguments: ['@event_dispatcher', '@entity_type.manager', '@datetime.time', '@logger.factory', '@workspaces.association']

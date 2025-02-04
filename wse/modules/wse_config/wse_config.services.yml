@@ -1,0 +1,38 @@
+services:
+  wse_config.workspaces.manager:
+    class: Drupal\wse_config\WseConfigWorkspaceManager
+    decorates: workspaces.manager
+    public: false
+    arguments: [ '@.inner', '@wse.workspace_id_detector' ]
+
+  wse_config.event_subscriber:
+    class: Drupal\wse_config\EventSubscriber\WseConfigSubscriber
+    arguments: ['@messenger', '@wse_config.storage.active', '@workspaces.manager', '@module_handler']
+    tags:
+      - { name: event_subscriber }
+
+  wse_config.storage:
+    class: Drupal\wse_config\WseConfigCachedStorage
+    decorates: config.storage
+    arguments: ['@wse_config.storage.active']
+
+  wse_config.storage.active:
+    class: Drupal\wse_config\WseConfigDatabaseStorage
+    public: false
+    decorates: config.storage.active
+    arguments: [
+      '@wse_config.storage.active.inner',
+      '@entity_type.manager',
+      '@wse.workspace_id_detector',
+      '@wse_config.config_matcher'
+    ]
+    tags:
+      - { name: backend_overridable }
+
+  wse_config.config_matcher:
+    class: Drupal\wse_config\WseConfigMatcher
+    arguments: ['@event_dispatcher', '@entity_type.manager']
+
+  wse.workspace_id_detector:
+    class: Drupal\wse_config\WorkspaceIdDetector
+    arguments: ['@session', '@request_stack', '@current_user']

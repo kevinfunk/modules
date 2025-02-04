@@ -1,0 +1,29 @@
+wse.settings:
+  path: '/admin/config/workflow/workspaces/settings'
+  defaults:
+    _form: '\Drupal\wse\Form\SettingsForm'
+    _title: 'Workspace settings'
+  requirements:
+    _permission: 'administer workspaces'
+
+wse.switch_to_live:
+  path: '/wse/switch-to-live'
+  defaults:
+    _title: 'Switch To Live'
+    _controller: '\Drupal\wse\Controller\SwitchToLiveController::switchToLive'
+  requirements:
+    _access: 'TRUE'
+
+entity.workspace.revert_form:
+  path: '/admin/config/workflow/workspaces/manage/{workspace}/revert'
+  defaults:
+    _form: '\Drupal\wse\Form\WorkspaceRevertForm'
+    _title: 'Revert workspace'
+  options:
+    _admin_route: TRUE
+    parameters:
+      workspace:
+        type: entity:workspace
+  requirements:
+    _permission: 'administer workspaces'
+    _workspace_status: 'closed'

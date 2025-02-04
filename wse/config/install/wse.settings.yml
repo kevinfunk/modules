@@ -1,0 +1,12 @@
+append_current_workspace_to_url: false
+simplified_toolbar_switcher: false
+recent_workspaces_max_age: 72
+switcher_max_options: 10
+save_published_revisions: published
+override_save_published_revisions: false
+squash_on_publish: false
+squash_on_publish_interval: 0
+clone_on_publish: false
+safe_forms: {  }
+entity_workspace_status: {  }
+disable_sub_workspaces: false

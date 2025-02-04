@@ -1,0 +1,11 @@
+preview-link-form:
+  js:
+    //cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js: { type: external, minified: true, crossorigin: anonymous }
+    js/preview-link-form.js: { }
+  css:
+    component:
+      css/preview-link-form.css: { }
+  dependencies:
+    - core/jquery
+    - core/once
+    - core/drupal

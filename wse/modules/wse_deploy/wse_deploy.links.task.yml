@@ -1,0 +1,5 @@
+wse_deploy.settings:
+  route_name: wse_deploy.settings
+  title: 'Deploy Settings'
+  weight: 25
+  base_route: entity.workspace.collection

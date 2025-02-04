@@ -1,0 +1,25 @@
+{
+    "name": "drupal/wse",
+    "description": "Workspaces Extra.",
+    "type": "drupal-module",
+    "license": "GPL-2.0-or-later",
+    "homepage": "https://www.drupal.org/project/wse",
+    "minimum-stability": "dev",
+    "require": {
+        "drupal/core": "^10.3 || ^11"
+    },
+    "require-dev": {
+        "drupal/depcalc": "*",
+        "drupal/diff": "*",
+        "drupal/group_content_menu": "*",
+        "drupal/s3fs": "*",
+        "drupal/trash": "*"
+    },
+    "extra": {
+        "drush": {
+            "services": {
+                "drush.services.yml": ">=9"
+            }
+        }
+    }
+}

@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * @file
+ * Workspace access based on tagging users and workspaces.
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\workspaces\WorkspaceInterface;
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function wse_group_access_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+
+  if ($entity_type->id() === 'workspace') {
+    $fields['wse_group_access'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Group Access'))
+      ->setDescription(t('Select which groups a user must belong to in order to access this workspace.'))
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setSetting('target_type', 'taxonomy_term')
+      // Use an empty array for the target bundles, which means "no bundles are
+      // referenceable". The target entity type and bundles are meant to be
+      // altered by another module.
+      ->setSetting('handler_settings', ['target_bundles' => []])
+      ->setDisplayConfigurable('view', FALSE)
+      ->setDisplayConfigurable('form', FALSE)
+      ->setDisplayOptions('form', [
+        'type' => 'options_buttons',
+        'weight' => 5,
+      ]);
+  }
+
+  if ($entity_type->id() === 'user') {
+    $fields['wse_group_access'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Group Access'))
+      ->setSetting('target_type', 'taxonomy_term')
+      // Use an empty array for the target bundles, which means "no bundles are
+      // referenceable". The target entity type and bundles are meant to be
+      // altered by another module.
+      ->setSetting('handler_settings', ['target_bundles' => []])
+      ->setComputed(TRUE);
+  }
+
+  return $fields;
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access() for the 'workspace' entity type.
+ */
+function wse_group_access_workspace_access(WorkspaceInterface $workspace, $operation, AccountInterface $account) {
+  return AccessResult::forbiddenIf(!wse_group_access_check($workspace, $account))
+    ->addCacheableDependency($workspace)
+    ->cachePerUser();
+}
+
+/**
+ * Implements hook_wse_workspace_list_builder_entities_alter().
+ */
+function wse_group_access_wse_workspace_list_builder_entities_alter(&$entities) {
+  $entities = array_filter($entities, function ($workspace) {
+    return wse_group_access_check($workspace);
+  });
+}
+
+/**
+ * Checks whether an account has access to a workspace, based on the groups.
+ *
+ * @param \Drupal\workspaces\WorkspaceInterface $workspace
+ *   The workspace to check.
+ * @param \Drupal\Core\Session\AccountInterface $account
+ *   (optional) The user object to check. Defaults to the current user.
+ *
+ * @return bool
+ *   Whether the user has access to the workspace based on the groups.
+ */
+function wse_group_access_check(WorkspaceInterface $workspace, ?AccountInterface $account = NULL) {
+  $user_storage = \Drupal::entityTypeManager()->getStorage('user');
+  if (is_null($account)) {
+    $user = $user_storage->load(\Drupal::currentUser()->id());
+  }
+  else {
+    // Make sure to have a fully loaded object.
+    $user = $user_storage->load($account->id());
+  }
+
+  $workspace_groups = array_column($workspace->get('wse_group_access')->getValue(), 'target_id');
+  $user_groups = array_column($user->get('wse_group_access')->getValue(), 'target_id');
+
+  // Allow access if the workspace does not have any groups selected.
+  if (empty($workspace_groups)) {
+    return TRUE;
+  }
+
+  if ($user_groups) {
+    // We require the user to have just one group.
+    return !empty(array_intersect($user_groups, $workspace_groups));
+  }
+
+  return FALSE;
+}

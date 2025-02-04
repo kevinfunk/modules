@@ -1,0 +1,6 @@
+services:
+  wse_scheduler.commands:
+    class: Drupal\wse_scheduler\Commands\WseSchedulerCommands
+    arguments: ['@wse_scheduler.publisher']
+    tags:
+      - { name: drush.command }

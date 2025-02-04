@@ -1,0 +1,9 @@
+services:
+  access_check.wse_group_access:
+    class: Drupal\wse_group_access\Access\WseGroupAccess
+    tags:
+      - { name: access_check, applies_to: _wse_group_access }
+  wse_group_access.route_subscriber:
+    class: Drupal\wse_group_access\Routing\RouteSubscriber
+    tags:
+      - { name: event_subscriber }

@@ -1,0 +1,6 @@
+services:
+  wse_menu.commands:
+    class: Drupal\wse_menu\Drush\Commands\WseMenuCommands
+    arguments: ['%app.root%', '@entity_type.manager', '@workspaces.manager', '@wse_menu.tree_storage', '@menu.link_tree', '@file_system']
+    tags:
+      - { name: drush.command }

@@ -1,0 +1,5 @@
+entity.workspace.export_form:
+  route_name: entity.workspace.export_form
+  title: 'Export'
+  appears_on:
+    - entity.workspace.canonical

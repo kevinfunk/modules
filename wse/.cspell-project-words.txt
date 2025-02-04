@@ -1,0 +1,13 @@
+Clipboardjs
+clipboardjs
+clippy
+Csvg
+csvg
+depcalc
+Graphp
+graphp
+graphviz
+rankdir
+referenceable
+tooltiptext
+varchar

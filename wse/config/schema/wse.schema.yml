@@ -1,0 +1,47 @@
+# Schema for the configuration files of the WSE module.
+wse.settings:
+  type: config_object
+  label: 'WSE settings'
+  mapping:
+    append_current_workspace_to_url:
+      type: boolean
+      label: 'Append the current workspace to the URL'
+    simplified_toolbar_switcher:
+      type: boolean
+      label: 'Simplified toolbar switcher'
+    recent_workspaces_max_age:
+      type:  integer
+      label: 'Number of hours until a workspace will be removed from recently accessed workspaces'
+    switcher_max_options:
+      type: integer
+      label: 'Maximum number of workspaces displayed in the switcher select'
+    save_published_revisions:
+      type: ignore
+      label: 'Store all or only published revisions IDs of entities being published'
+    override_save_published_revisions:
+      type: boolean
+      label: 'Allow override of the save_published_revisions setting per workspace'
+    squash_on_publish:
+      type: boolean
+      label: 'When a workspace is published, delete its intermediary draft revisions'
+    squash_on_publish_interval:
+      type: integer
+      label: 'Number of hours until the intermediary revisions will be deleted'
+    clone_on_publish:
+      type: boolean
+      label: 'When a workspace is published, clone its details into a new draft workspace'
+    safe_forms:
+      type: sequence
+      label: 'Workspace safe forms allowed for submission inside workspaces'
+      sequence:
+        type: string
+        label: Safe forms
+    entity_workspace_status:
+      type: sequence
+      label: 'A list of entity types on which to enable the entity_workspace_status extra field'
+      sequence:
+        type: string
+        label: Entity types
+    disable_sub_workspaces:
+      type: boolean
+      label: 'Disable sub-workspaces in the UI'

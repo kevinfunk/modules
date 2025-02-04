@@ -1,0 +1,120 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the wse_menu_test module.
+ */
+
+use Drupal\block\Entity\Block;
+use Drupal\menu_link_content\Entity\MenuLinkContent;
+use Drupal\node\Entity\Node;
+
+/**
+ * Implements hook_install().
+ */
+function wse_menu_test_install() {
+  /** @var \Drupal\system\MenuInterface $menu */
+  $menu = \Drupal::entityTypeManager()
+    ->getStorage('menu')
+    ->create([
+      'id' => 'wse-menu-test',
+      'label' => 'Workspaces Test menu',
+      'description' => 'Description text',
+    ]);
+  $menu->save();
+
+  $nodes = [
+    '1' => 'Page 1',
+    '2' => 'Page 2',
+    '3' => 'Page 3',
+    '4' => 'Page 4',
+    '5' => 'Page 5',
+    '6' => 'Page 6',
+  ];
+  foreach ($nodes as $nid => $title) {
+    $node = Node::create([
+      'title' => $title,
+      'status' => TRUE,
+      'type' => 'page',
+    ]);
+    $node->save();
+    $parent = !empty($menu_link) && $nid % 2 == 0 ? $menu_link->getPluginDefinition()['id'] : '';
+    if ($nid > 4 && isset($menu_link)) {
+      $parent = $menu_link->getPluginDefinition()['id'];
+    }
+    $menu_link = MenuLinkContent::create([
+      'title' => $title . ' Link',
+      'link' => ['uri' => 'internal:/node/' . $nid],
+      'menu_name' => 'wse-menu-test',
+      'expanded' => $nid !== 3,
+      'parent' => $parent,
+    ]);
+    $menu_link->save();
+  }
+
+  $values = [
+    'id' => 'olivero_wse_menu_test_1',
+    'plugin' => 'system_menu_block:wse-menu-test',
+    'region' => 'content',
+    'theme' => 'olivero',
+    'visibility' => [],
+    'weight' => -50,
+    'settings' => [
+      'label' => 'Workspaces Menu Test Default Settings',
+      'label_display' => TRUE,
+      'provider' => 'system',
+      // Start displaying links on level x.
+      'level' => 1,
+      // Display links up to level x.
+      // 0 = unlimited.
+      'depth' => 0,
+      'expand_all_items' => TRUE,
+    ],
+  ];
+  $block = Block::create($values);
+  $block->save();
+
+  $values = [
+    'id' => 'olivero_wse_menu_test_2',
+    'plugin' => 'system_menu_block:wse-menu-test',
+    'region' => 'content',
+    'theme' => 'olivero',
+    'visibility' => [],
+    'weight' => -40,
+    'settings' => [
+      'label' => 'Workspaces Menu Test Level 2 Depth 3',
+      'label_display' => TRUE,
+      'provider' => 'system',
+      // Start displaying links on level x.
+      'level' => 2,
+      // Display links up to level x.
+      // 0 = unlimited.
+      'depth' => 3,
+      'expand_all_items' => TRUE,
+    ],
+  ];
+  $block = Block::create($values);
+  $block->save();
+
+  $values = [
+    'id' => 'olivero_wse_menu_test_3',
+    'plugin' => 'system_menu_block:wse-menu-test',
+    'region' => 'content',
+    'theme' => 'olivero',
+    'visibility' => [],
+    'weight' => -40,
+    'settings' => [
+      'label' => 'Workspaces Menu Test Not Expanding All Items',
+      'label_display' => TRUE,
+      'provider' => 'system',
+      // Start displaying links on level x.
+      'level' => 1,
+      // Display links up to level x.
+      // 0 = unlimited.
+      'depth' => 0,
+      'expand_all_items' => FALSE,
+    ],
+  ];
+  $block = Block::create($values);
+  $block->save();
+}

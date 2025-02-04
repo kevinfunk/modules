@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for the Workspaces Preview module.
+ */
+
+use Drupal\Component\Serialization\Json;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\StackedRouteMatchInterface;
+use Drupal\Core\Url;
+use Drupal\workspaces\WorkspaceInterface;
+
+/**
+ * Implements hook_form_FORM_ID_alter() for 'wse_workspace_switcher_form'.
+ */
+function wse_preview_form_wse_workspace_switcher_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $active_workspace = \Drupal::service('workspaces.manager')->getActiveWorkspace();
+  if (!$active_workspace) {
+    return;
+  }
+
+  $url = Url::fromRoute('entity.workspace.preview_link_form', [
+    'workspace' => $active_workspace->id(),
+  ]);
+
+  $route_match = \Drupal::routeMatch();
+  if ($route_match instanceof StackedRouteMatchInterface) {
+    $route_match = $route_match->getMasterRouteMatch();
+  }
+  $current_path_is_admin = \Drupal::service('router.admin_context')->isAdminRoute($route_match->getRouteObject());
+  if (!$current_path_is_admin) {
+    $query = $url->getOption('query');
+    $query['redirect_url'] = Url::fromRoute('<current>')->toString();
+    $url->setOption('query', $query);
+  }
+
+  $form['operations']['#links']['preview_link'] = [
+    'title' => t('Preview link'),
+    'url' => $url,
+    'attributes' => [
+      'class' => ['wse-action-link', 'wse-action-link--icon-show', 'use-ajax'],
+      'title' => t('Preview link'),
+      'data-dialog-type' => 'modal',
+      'data-dialog-options' => Json::encode([
+        'width' => 850,
+      ]),
+    ],
+  ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access() for the 'workspace' entity type.
+ */
+function wse_preview_workspace_access(WorkspaceInterface $workspace, $operation) {
+  if ($operation === 'view') {
+    $request = \Drupal::request();
+    $negotiated_workspace_id = \Drupal::service('wse_preview.negotiator.cookie')->getActiveWorkspaceId($request);
+    if ($negotiated_workspace_id == $workspace->id()) {
+      return AccessResult::allowed()
+        ->addCacheContexts(['cookies:wse_preview'])
+        ->addCacheableDependency($workspace);
+    }
+  }
+}

@@ -1,0 +1,92 @@
+<?php
+
+/**
+ * @file
+ * Contains hooks for wse_scheduler module.
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Session\AccountInterface;
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function wse_scheduler_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+  if ($entity_type->id() == 'workspace') {
+    $fields['publish_on'] = BaseFieldDefinition::create('timestamp')
+      ->setLabel(t('Publish On'))
+      ->setDescription(t('Define a date the workspace gets published on.'))
+      ->setTranslatable(FALSE)
+      ->setRequired(FALSE)
+      ->setCardinality(1)
+      ->setDisplayOptions('form', [
+        'type' => 'datetime_timestamp',
+        'weight' => 10,
+      ])
+      ->setDisplayConfigurable('form', TRUE);
+  }
+  return $fields;
+}
+
+/**
+ * Implements hook_cron().
+ */
+function wse_scheduler_cron() {
+  // Now that we have the right user, publish the workspaces.
+  \Drupal::service('wse_scheduler.publisher')->publishScheduledWorkspaces();
+}
+
+/**
+ * Implements hook_entity_field_access().
+ */
+function wse_scheduler_entity_field_access($operation, FieldDefinitionInterface $field_definition, AccountInterface $account, ?FieldItemListInterface $items = NULL) {
+  if ($field_definition->getName() == 'publish_on' && $operation == 'edit') {
+    return AccessResult::forbiddenIf(!$account->hasPermission('schedule workspace releases'));
+  }
+  return AccessResult::neutral();
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function wse_scheduler_form_workspace_edit_form_alter(&$form, FormStateInterface $form_state) {
+  wse_scheduler_alter_workspace_form($form);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function wse_scheduler_form_workspace_add_form_alter(&$form, FormStateInterface $form_state) {
+  wse_scheduler_alter_workspace_form($form);
+}
+
+/**
+ * Form altering for workspace add and edit forms.
+ *
+ * Adds a submit callback that sets a workspace to the scheduled state if the
+ * publish_on field is set.
+ */
+function wse_scheduler_alter_workspace_form(&$form) {
+  $form['actions']['submit']['#submit'][] = 'wse_scheduler_workspace_form_submit';
+}
+
+/**
+ * Additional submit handler for workspaces edit and add forms.
+ */
+function wse_scheduler_workspace_form_submit(&$form, FormStateInterface $form_state) {
+  /** @var \Drupal\workspaces\WorkspaceInterface $workspace */
+  $workspace = $form_state->getFormObject()->getEntity();
+  $publish_timestamp = !empty($form_state->getValue('publish_on')[0]['value'])
+    ? $form_state->getValue('publish_on')[0]['value']->getTimestamp()
+    : NULL;
+
+  $workspace
+    ->set('publish_on', $publish_timestamp)
+    ->save();
+}

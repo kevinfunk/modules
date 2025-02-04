@@ -1,0 +1,123 @@
+<?php
+
+/**
+ * @file
+ * Install and update hooks for the Workspaces Menu module.
+ */
+
+use Drupal\Core\Url;
+use Drupal\wse_menu\WseMenuTreeStorage;
+
+/**
+ * Implements hook_install().
+ */
+function wse_menu_install() {
+  // Build the workspace-specific menu trees for all workspaces.
+  $workspaces = \Drupal::entityTypeManager()
+    ->getStorage('workspace')
+    ->loadByProperties(['status' => WSE_STATUS_OPEN]);
+  foreach ($workspaces as $workspace) {
+    \Drupal::service('workspaces.manager')->executeInWorkspace($workspace->id(), function () use ($workspace) {
+      \Drupal::service('wse_menu.tree_storage')->rebuildWorkspaceMenuTree($workspace);
+    });
+  }
+
+  // Our post_update function is meant to run after the module is installed.
+  _wse_menu_handle_hierarchy_post_update();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function wse_menu_uninstall(): void {
+  $schema = \Drupal::database()->schema();
+  foreach ($schema->findTables(WseMenuTreeStorage::TABLE_PREFIX . '%') as $table) {
+    $schema->dropTable($table);
+  }
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function wse_menu_requirements($phase) {
+  $requirements = [];
+
+  if ($phase === 'runtime' && \Drupal::moduleHandler()->moduleExists('menu_link_content')) {
+    /** @var \Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface $last_installed_schema_repository */
+    $last_installed_schema_repository = \Drupal::service('entity.last_installed_schema.repository');
+    $field_storage_definitions = $last_installed_schema_repository->getLastInstalledFieldStorageDefinitions('menu_link_content');
+    if (!$field_storage_definitions['parent']->isRevisionable()) {
+      _wse_menu_handle_hierarchy_post_update();
+      $requirements['wse_menu'] = [
+        'title' => t('WSE Menu'),
+        'description' => t('The hierarchy fields of custom menu links are not revisionable. You should run the <a href=":update">database update script</a> immediately.', [':update' => Url::fromRoute('system.db_update')->toString()]),
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Ensures that our post_update function will run on next database update.
+ */
+function _wse_menu_handle_hierarchy_post_update() {
+  $existing_update_functions = \Drupal::keyValue('post_update')->get('existing_updates', []);
+  if ($key = array_search('wse_menu_post_update_make_hierarchy_revisionable', $existing_update_functions)) {
+    unset($existing_update_functions[$key]);
+    \Drupal::keyValue('post_update')->set('existing_updates', $existing_update_functions);
+  }
+}
+
+/**
+ * Empty update.
+ */
+function wse_menu_update_10001(): void {
+  // This update function has been removed.
+}
+
+/**
+ * Remove the 'wse_menu_tree' entity type.
+ */
+function wse_menu_update_10002(): void {
+  /** @var \Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface $definition_update_manager */
+  $definition_update_manager = \Drupal::service('entity.definition_update_manager');
+  if ($entity_type = $definition_update_manager->getEntityType('wse_menu_tree')) {
+    $definition_update_manager->uninstallEntityType($entity_type);
+  }
+
+  /** @var \Drupal\workspaces\WorkspaceAssociationInterface $workspace_association */
+  $workspace_association = \Drupal::service('workspaces.association');
+  $workspace_association->deleteAssociations(NULL, 'wse_menu_tree', [1]);
+}
+
+/**
+ * Rebuild the workspace-specific menu tree tables.
+ */
+function wse_menu_update_10003(array &$sandbox): string {
+  $workspace_storage = \Drupal::entityTypeManager()->getStorage('workspace');
+  if (!isset($sandbox['workspace_ids'])) {
+    $sandbox['workspace_ids'] = $workspace_storage
+      ->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('status', WSE_STATUS_OPEN)
+      ->execute();
+  }
+
+  $workspace_id = array_shift($sandbox['workspace_ids']);
+  if ($workspace = $workspace_storage->load($workspace_id)) {
+    \Drupal::service('workspaces.manager')->executeInWorkspace($workspace_id, function () use ($workspace) {
+      \Drupal::service('wse_menu.tree_storage')->rebuildWorkspaceMenuTree($workspace);
+    });
+  }
+
+  if (!empty($sandbox['workspace_ids'])) {
+    $sandbox['#finished'] = FALSE;
+    return (string) t('The menu tree has been rebuilt for the @label workspace.', ['@label' => $workspace->label()]);
+  }
+  else {
+    $sandbox['#finished'] = TRUE;
+    return (string) t('The menu tree has been rebuilt for all workspaces.');
+  }
+}

@@ -1,0 +1,29 @@
+wse_preview.workspace_preview:
+  path: '/workspace-preview/{preview_id}'
+  defaults:
+    _title: 'Workspace Preview'
+    _controller: '\Drupal\wse_preview\Controller\WsePreviewController::preview'
+  requirements:
+    _permission: 'access workspace previews'
+
+entity.workspace.preview_link_form:
+  path: '/admin/config/workflow/workspaces/manage/{workspace}/preview-link'
+  defaults:
+    _form: '\Drupal\wse_preview\Form\WsePreviewLinkForm'
+    _title: 'Preview link'
+  options:
+    _admin_route: TRUE
+    parameters:
+      workspace:
+        type: entity:workspace
+  requirements:
+    _entity_access: 'workspace.view'
+    _workspace_status: 'open'
+
+workspace.preview_link_settings_form:
+  path: '/admin/config/workflow/workspaces/settings/preview-settings'
+  defaults:
+    _form: '\Drupal\wse_preview\Form\WsePreviewSettingsForm'
+    _title: 'Preview link settings'
+  requirements:
+    _permission: 'administer workspaces'

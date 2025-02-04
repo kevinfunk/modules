@@ -1,0 +1,21 @@
+services:
+  wse_preview.negotiator.cookie:
+    class: Drupal\wse_preview\Negotiator\CookieWorkspaceNegotiator
+    arguments:
+      - '@request_stack'
+      - '@keyvalue.expirable'
+    tags:
+      - { name: workspace_negotiator, priority: 150 }
+      - { name: event_subscriber }
+
+  wse_preview.page_cache_request_policy.disallow_workspace_preview_requests:
+    class: Drupal\wse_preview\PageCache\DisallowWorkspacePreviewRequests
+    public: false
+    tags:
+      - { name: page_cache_request_policy }
+
+  wse_preview.workspaces.manager:
+    class: Drupal\wse_preview\WsePreviewWorkspaceManager
+    decorates: workspaces.manager
+    public: false
+    arguments: ['@.inner', '@wse_preview.negotiator.cookie', '@request_stack']

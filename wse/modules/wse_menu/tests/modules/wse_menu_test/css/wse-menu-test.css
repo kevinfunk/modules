@@ -1,0 +1,9 @@
+.menu--wse-menu-test .menu__link--active-trail {
+  font-weight: bold;
+  color: lime;
+}
+
+.menu--wse-menu-test .menu__link--active-trail.is-active {
+  color: red;
+}
+

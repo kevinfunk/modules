@@ -1,0 +1,13 @@
+wse_preview.preview_link_form:
+  route_name: entity.workspace.preview_link_form
+  title: 'Preview link'
+  weight: 20
+  base_route: entity.workspace.canonical
+wse_preview.preview_link_form_tab:
+  title: 'Preview link'
+  route_name: wse.settings
+  parent_id: wse.settings
+wse_preview.preview_settings_form:
+  title: 'Preview link settings'
+  route_name: workspace.preview_link_settings_form
+  parent_id: wse.settings

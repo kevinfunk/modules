@@ -1,0 +1,18 @@
+<div>
+  <span class="font-medium">Status</span>
+  {% if published %}
+    <div>{{ 'Has been published: Yes'|trans }}</div>
+  {% else %}
+    <div>{{ 'Has been published: No'|trans }}</div>
+  {% endif %}
+  {% if draft %}
+      <div>{{ 'Current draft workspace: '|trans }}
+    {% if switch_to_workspace_link %}
+      <a class="font-red" href="{{ switch_to_workspace_link }}">{{ workspace }}</a>
+    {% else %}
+        {{ workspace }}
+    {% endif %}
+      </div>
+  {% endif %}
+</div>
+{{ attach_library('wse/entity-status') }}

@@ -1,0 +1,38 @@
+wse_deploy.settings:
+  path: '/admin/config/workflow/workspaces/deploy-settings'
+  defaults:
+    _form: '\Drupal\wse_deploy\Form\SettingsForm'
+    _title: 'Workspace deploy settings'
+  requirements:
+    _permission: 'administer workspaces'
+
+entity.workspace.export_form:
+  path: '/admin/config/workflow/workspaces/manage/{workspace}/export'
+  defaults:
+    _form: '\Drupal\wse_deploy\Form\WorkspaceExportForm'
+    _title: 'Export workspace'
+  options:
+    _admin_route: TRUE
+    parameters:
+      workspace:
+        type: entity:workspace
+  requirements:
+    _permission: 'administer workspaces'
+
+wse_deploy.upload:
+  path: '/wse-deploy/import/{upload_type}/{workspace_id}'
+  defaults:
+    _controller: '\Drupal\wse_deploy\Controller\WseDeployController::upload'
+  methods: [POST]
+  requirements:
+    upload_type: data|files
+    _access: 'TRUE'
+
+wse_deploy.status:
+  path: '/wse-deploy/status/{status}/{workspace_id}'
+  defaults:
+    _controller: '\Drupal\wse_deploy\Controller\WseDeployController::status'
+  methods: [POST]
+  requirements:
+    status: ready|publish|revert
+    _access: 'TRUE'

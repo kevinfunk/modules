@@ -1,0 +1,96 @@
+parameters:
+  ignoreErrors:
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 1
+      path: modules/wse_config/src/WseConfigDatabaseStorage.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 1
+      path: modules/wse_deploy/src/Commands/WseDeployCommands.php
+
+    -
+      message: "#^Call to an undefined static method Drupal\\\\jsonapi\\\\EventSubscriber\\\\ResourceObjectNormalizationCacher\\:\\:generateLookupRenderArray\\(\\)\\.$#"
+      count: 1
+      path: modules/wse_deploy/src/EventSubscriber/WseResourceObjectNormalizationCacher.php
+
+    -
+      message: "#^Class Drupal\\\\wse_deploy\\\\EventSubscriber\\\\WseResourceObjectNormalizationCacher extends @internal class Drupal\\\\jsonapi\\\\EventSubscriber\\\\ResourceObjectNormalizationCacher\\.$#"
+      count: 1
+      path: modules/wse_deploy/src/EventSubscriber/WseResourceObjectNormalizationCacher.php
+
+    -
+      message: "#^Method Drupal\\\\wse_deploy\\\\Plugin\\\\wse_deploy\\\\WorkspaceExport\\\\HttpExport\\:\\:__construct\\(\\) invoked with 5 parameters, 6 required\\.$#"
+      count: 1
+      path: modules/wse_deploy/src/Plugin/wse_deploy/WorkspaceExport/S3fsExport.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 2
+      path: modules/wse_deploy/src/WorkspaceExporter.php
+
+    -
+      message: "#^Class Drupal\\\\wse_lb\\\\BlockContentWorkspaceHandler extends @internal class Drupal\\\\workspaces\\\\Entity\\\\Handler\\\\DefaultWorkspaceHandler\\.$#"
+      count: 1
+      path: modules/wse_lb/src/BlockContentWorkspaceHandler.php
+
+    -
+      message: "#^Instantiated class Graphp\\\\GraphViz\\\\GraphViz not found\\.$#"
+      count: 1
+      path: modules/wse_menu/src/Drush/Commands/WseMenuCommands.php
+
+    -
+      message: "#^Instantiated class Graphp\\\\Graph\\\\Graph not found\\.$#"
+      count: 1
+      path: modules/wse_menu/src/Drush/Commands/WseMenuCommands.php
+
+    -
+      message: "#^Call to static method load\\(\\) on an unknown class Drupal\\\\wse_menu\\\\Entity\\\\WseMenuTree\\.$#"
+      count: 1
+      path: modules/wse_menu/src/EventSubscriber/WseMenuSubscriber.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 2
+      path: modules/wse_menu/src/EventSubscriber/WseMenuSubscriber.php
+
+    -
+      message: "#^Class Drupal\\\\wse_menu\\\\Form\\\\WseMenuForm extends @internal class Drupal\\\\menu_ui\\\\MenuForm\\.$#"
+      count: 1
+      path: modules/wse_menu/src/Form/WseMenuForm.php
+
+    -
+      message: "#^Missing cache backend declaration for performance\\.$#"
+      count: 1
+      path: modules/wse_menu/src/WseMenuLinkManager.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 2
+      path: modules/wse_preview/src/Form/WsePreviewLinkForm.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 1
+      path: src/EventSubscriber/WorkspacePublishingEventSubscriber.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 1
+      path: src/Form/MoveEntityForm.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 1
+      path: src/Plugin/Validation/Constraint/WseEntityReferenceSupportedNewEntitiesConstraintValidator.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 4
+      path: src/WseWorkspaceAssociation.php
+
+    -
+      message: "#^\\\\Drupal calls should be avoided in classes, use dependency injection instead$#"
+      count: 1
+      path: src/WseWorkspaceListBuilder.php

@@ -1,0 +1,11 @@
+
+wse_scheduler.workspaces_overview:
+  title: 'Overview'
+  route_name: entity.workspace.collection
+  parent_id: entity.workspace.collection
+
+wse_scheduler.scheduled_workspaces:
+  title: 'Scheduled Releases'
+  route_name: view.scheduled_workspaces.page_1
+  parent_id: entity.workspace.collection
+  weight: 1

@@ -1,0 +1,9 @@
+services:
+  wse_deploy.commands:
+    class: Drupal\wse_deploy\Commands\WseDeployCommands
+    arguments:
+      - '@entity_type.manager'
+      - '@wse_deploy.workspace_importer'
+      - '@wse.workspace_reverter'
+    tags:
+      - { name: drush.command }

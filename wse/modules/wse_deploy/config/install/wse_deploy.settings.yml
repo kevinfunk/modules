@@ -1,0 +1,3 @@
+deploy_path: 'private://workspaces'
+export_plugin: ''
+export_plugin_configuration: { }

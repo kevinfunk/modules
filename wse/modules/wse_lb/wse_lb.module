@@ -1,0 +1,15 @@
+<?php
+
+/**
+ * @file
+ * Implements hooks for the Workspaces Layout Builder module.
+ */
+
+use Drupal\wse_lb\BlockContentWorkspaceHandler;
+
+/**
+ * Implements hook_entity_type_build().
+ */
+function wse_lb_entity_type_build(array &$entity_types) {
+  $entity_types['block_content']->setHandlerClass('workspace', BlockContentWorkspaceHandler::class);
+}

@@ -1,0 +1,457 @@
+<?php
+
+/**
+ * @file
+ * Provides extra functionality for the Workspaces module.
+ */
+
+use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\SortArray;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Url;
+use Drupal\workspaces\Entity\Handler\IgnoredWorkspaceHandler;
+use Drupal\workspaces\WorkspaceInterface;
+use Drupal\wse\PublishedRevisionStorage;
+use Drupal\wse\WseEntityUntranslatableFieldsConstraint;
+use Drupal\wse\WseFormOperations;
+use Drupal\wse\WseWorkspaceListBuilder;
+
+const WSE_STATUS_OPEN = 'open';
+const WSE_STATUS_CLOSED = 'closed';
+
+/**
+ * Implements hook_validation_constraint_alter().
+ */
+function wse_validation_constraint_alter(array &$definitions) {
+  // @todo Fix in core.
+  if (isset($definitions['EntityUntranslatableFields'])) {
+    $definitions['EntityUntranslatableFields']['class'] = WseEntityUntranslatableFieldsConstraint::class;
+  }
+}
+
+/**
+ * Gets the status for a workspace.
+ */
+function wse_workspace_get_status(WorkspaceInterface $workspace) {
+  return $workspace->get('status')->value;
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ */
+function wse_workspace_presave(WorkspaceInterface $workspace) {
+  // Ensure that a workspace's ID is always its UUID, so we can re-use workspace
+  // labels automatically.
+  // @see \Drupal\wse\EventSubscriber\WorkspacePublishingEventSubscriber::onPostPublish()
+  if ($workspace->isNew()) {
+    $workspace->set('id', $workspace->uuid());
+  }
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function wse_entity_base_field_info(EntityTypeInterface $entity_type) {
+  if ($entity_type->id() === 'workspace') {
+    $fields['status'] = BaseFieldDefinition::create('list_string')
+      ->setLabel(t('Status'))
+      ->setDescription(t('The workspace status.'))
+      ->setStorageRequired(TRUE)
+      ->setSetting('allowed_values', [
+        WSE_STATUS_OPEN => t('Open'),
+        WSE_STATUS_CLOSED => t('Closed'),
+      ])
+      ->setDisplayConfigurable('form', FALSE)
+      ->setDisplayConfigurable('view', FALSE)
+      ->setDefaultValue(WSE_STATUS_OPEN)
+      ->setInitialValue(WSE_STATUS_OPEN);
+
+    return $fields;
+  }
+}
+
+/**
+ * Implements hook_entity_type_build().
+ */
+function wse_entity_type_build(array &$entity_types) {
+  // Allow CRUD operations for various entity types in workspaces.
+  $ignored_entity_types = [
+    'crop',
+    'events_logging',
+    'file',
+    'paragraph',
+    'variant',
+  ];
+  foreach ($ignored_entity_types as $entity_type_id) {
+    if (isset($entity_types[$entity_type_id])) {
+      $entity_types[$entity_type_id]->setHandlerClass('workspace', IgnoredWorkspaceHandler::class);
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function wse_entity_type_alter(array &$entity_types) {
+  // Swap the workspace list builder so we can filter on open/closed statuses.
+  $entity_types['workspace']->setListBuilderClass(WseWorkspaceListBuilder::class);
+
+  /** @var \Drupal\workspaces\WorkspaceInformationInterface $workspace_info */
+  $workspace_info = \Drupal::service('workspaces.information');
+  foreach ($entity_types as $entity_type) {
+    if ($workspace_info->isEntityTypeSupported($entity_type)) {
+      // For supported entity types, add a constraint that prevents them from
+      // being changed in a closed workspace.
+      $entity_type->addConstraint('WseClosedWorkspace');
+
+      // Add link templates for the 'Move to workspace' and 'Discard changes'
+      // operations.
+      $base_path = NULL;
+      if ($entity_type->hasLinkTemplate('canonical')) {
+        $base_path = $entity_type->getLinkTemplate('canonical');
+      }
+      elseif ($entity_type->hasLinkTemplate('edit-form')) {
+        $base_path = $entity_type->getLinkTemplate('edit-form');
+      }
+
+      if ($base_path) {
+        $entity_type->setLinkTemplate('move-to-workspace', $base_path . '/move-to-workspace/{source_workspace}');
+        $entity_type->setLinkTemplate('discard-changes', $base_path . '/discard-changes/{source_workspace}');
+      }
+    }
+    elseif (!$workspace_info->isEntityTypeIgnored($entity_type)) {
+      // For unsupported entity types, add a constraint that prevents them from
+      // being changed in a workspace.
+      $entity_type->addConstraint('WseUnsupportedEntityType');
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_field_access().
+ */
+function wse_entity_field_access($operation, FieldDefinitionInterface $field_definition): AccessResult {
+  if ($field_definition->getTargetEntityTypeId() === 'workspace' && $field_definition->getName() === 'parent') {
+    $disable_sub_workspaces = \Drupal::config('wse.settings')->get('disable_sub_workspaces') ?? FALSE;
+    return AccessResult::forbiddenIf($disable_sub_workspaces);
+  }
+  return AccessResult::neutral();
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for 'workspace_publish_form'.
+ */
+function wse_form_workspace_publish_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $config = \Drupal::config('wse.settings');
+
+  $form['clone_on_publish'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Clone workspace details into a new draft workspace'),
+    '#default_value' => $config->get('clone_on_publish'),
+  ];
+
+  $form['#validate'][] = 'wse_workspace_publish_form_validate';
+  $form['#submit'][] = 'wse_workspace_publish_form_submit';
+}
+
+/**
+ * Entity form builder to add various information to the workspace.
+ */
+function wse_workspace_publish_form_validate($form, FormStateInterface $form_state) {
+  /** @var \Drupal\workspaces\WorkspaceInterface $workspace */
+  $workspace = $form_state->getFormObject()->getWorkspace();
+
+  $workspace->_clone_on_publish = $form_state->getValue('clone_on_publish');
+}
+
+/**
+ * Submit callback for the workspace publishing form.
+ */
+function wse_workspace_publish_form_submit($form, FormStateInterface $form_state) {
+  // @todo Fix this upstream.
+  $form_state->setRedirect('entity.workspace.collection');
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function wse_module_implements_alter(&$implementations, $hook) {
+  // Move wse_form_alter() to the end of the list.
+  if ($hook === 'form_alter') {
+    $temp = $implementations['wse'];
+    unset($implementations['wse']);
+    $implementations['wse'] = $temp;
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function wse_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  \Drupal::service('class_resolver')
+    ->getInstanceFromDefinition(WseFormOperations::class)
+    ->formAlter($form, $form_state, $form_id);
+}
+
+/**
+ * Implements hook_library_info_alter().
+ *
+ * Includes additional stylesheets to customize the Workspaces toolbar
+ * appearance.
+ */
+function wse_library_info_alter(&$libraries, $extension) {
+  if ($extension === 'workspaces' && isset($libraries['drupal.workspaces.toolbar'])) {
+    $wse_path = \Drupal::moduleHandler()->getModule('wse')->getPath();
+    $libraries['drupal.workspaces.toolbar']['css']['theme']["/$wse_path/css/wse.toolbar.css"] = [];
+    $libraries['drupal.workspaces.toolbar']['js']["/$wse_path/js/wse.toolbar.js"] = [];
+  }
+}
+
+/**
+ * Implements hook_toolbar_alter().
+ */
+function wse_toolbar_alter(&$items) {
+  // Always add the 'wse.settings' cache tags to the workspace toolbar tab to
+  // account for changes to the 'simplified_toolbar_switcher' option.
+  $wse_settings = \Drupal::config('wse.settings');
+  $items['workspace']['#cache']['tags'] = Cache::mergeTags($items['workspace']['#cache']['tags'] ?? [], $wse_settings->getCacheTags());
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for links__action_links.
+ */
+function wse_preprocess_links__wse_action_links(&$variables) {
+  $variables['attributes']['class'][] = 'wse-action-links';
+  foreach ($variables['links'] as $delta => $link_item) {
+    $variables['links'][$delta]['attributes']->addClass('wse-action-links__item');
+  }
+}
+
+/**
+ * Implements hook_page_attachments().
+ */
+function wse_page_attachments(array &$attachments) {
+  /** @var \Drupal\workspaces\WorkspaceManagerInterface $workspace_manger */
+  $workspace_manger = \Drupal::service('workspaces.manager');
+  $wse_settings = \Drupal::config('wse.settings');
+  if ($wse_settings->get('append_current_workspace_to_url') && $workspace_manger->hasActiveWorkspace()) {
+    $attachments['#attached']['drupalSettings']['wse'] = [
+      'workspace_id' => $workspace_manger->getActiveWorkspace()->id(),
+    ];
+    $attachments['#attached']['library'][] = 'wse/current-workspace';
+  }
+}
+
+/**
+ * Implements hook_entity_extra_field_info().
+ */
+function wse_entity_extra_field_info() {
+  $extra_fields = [];
+  $enabled_entity_type_ids = Drupal::config('wse.settings')->get('entity_workspace_status') ?? [];
+  foreach ($enabled_entity_type_ids as $entity_type_id) {
+    $bundles = \Drupal::service('entity_type.bundle.info')->getBundleInfo($entity_type_id);
+    foreach ($bundles as $bundle => $label) {
+      $extra_fields[$entity_type_id][$bundle]['display']['entity_workspace_status'] = [
+        'label' => t('Workspace Status'),
+        'weight' => 100,
+        'visible' => FALSE,
+      ];
+    }
+  }
+
+  return $extra_fields;
+}
+
+/**
+ * Implements hook_entity_view().
+ */
+function wse_entity_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, $view_mode) {
+  if ($display->getComponent('entity_workspace_status')) {
+    $draft = FALSE;
+    $workspace = NULL;
+    $switch_to_workspace_link = NULL;
+
+    $workspace_manager = Drupal::service('workspaces.manager');
+    if ($workspace_manager->hasActiveWorkspace()) {
+
+      $entity_type_manager = Drupal::entityTypeManager();
+      // Has this entity been published?
+      $id_key = $entity_type_manager->getDefinition($entity->getEntityTypeId())->getKey('id');
+      $query = $entity_type_manager
+        ->getStorage($entity->getEntityTypeId())
+        ->getQuery();
+      $published_version = $query
+        ->accessCheck(FALSE)
+        ->condition($id_key, $entity->id())
+        ->condition('workspace', NULL, 'IS')
+        ->execute();
+
+      $latest_revision = $workspace_manager->executeOutsideWorkspace(function () use ($entity) {
+        $storage = Drupal::entityTypeManager()->getStorage($entity->getEntityTypeId());
+        return $storage->loadRevision($storage->getLatestRevisionId($entity->id()));
+      });
+
+      // Is there a draft?
+      $active_workspace = $workspace_manager->getActiveWorkspace();
+      if ($latest_revision_workspace = $latest_revision->workspace->entity) {
+        $draft = TRUE;
+        $workspace = $latest_revision_workspace->label();
+
+        // Are we currently in the drafts workspace?
+        $descendants_and_self = Drupal::service('workspaces.repository')->getDescendantsAndSelf($latest_revision_workspace->id());
+        if (!$active_workspace || !in_array($active_workspace->id(), $descendants_and_self, TRUE)) {
+          $switch_to_workspace_link = $latest_revision_workspace->toUrl('activate-form', ['query' => Drupal::destination()->getAsArray()])->toString();
+        }
+      }
+      $build['entity_workspace_status'] = [
+        '#theme' => 'wse_entity_status',
+        '#published' => !empty($published_version),
+        '#draft' => $draft,
+        '#workspace' => $workspace,
+        '#switch_to_workspace_link' => $switch_to_workspace_link,
+      ];
+    }
+  }
+
+  if ($entity->getEntityTypeId() === 'workspace') {
+    // Don't display content entity operations when viewing a closed workspace.
+    if (wse_workspace_get_status($entity) === WSE_STATUS_CLOSED) {
+      unset($build['changes']['list']['#header']['operations']);
+      foreach (Element::children($build['changes']['list']) as $key) {
+        unset($build['changes']['list'][$key]['operations']);
+      }
+    }
+
+    // Add the 'Move to another workspace' operation.
+    $modal_attributes = [
+      'attributes' => [
+        'class' => ['use-ajax'],
+        'data-dialog-type' => 'modal',
+        'data-dialog-options' => Json::encode([
+          'width' => 500,
+        ]),
+      ],
+    ];
+
+    $module_handler = \Drupal::moduleHandler();
+    $trash_enabled = $module_handler->moduleExists('trash');
+    $diff_enabled = $module_handler->moduleExists('diff');
+
+    foreach (Element::children($build['changes']['list']) as $key) {
+      $tracked_entity = $build['changes']['list'][$key]['#entity'];
+      $entity_is_deleted = $trash_enabled && trash_entity_is_deleted($tracked_entity);
+
+      if ($entity_is_deleted) {
+        $build['changes']['list'][$key]['operations']['#links']['restore'] += $modal_attributes;
+        $build['changes']['list'][$key]['operations']['#links']['restore']['url']->setOption('query', \Drupal::destination()->getAsArray());
+
+        // Don't show any extra operations for deleted entities.
+        continue;
+      }
+
+      if ($tracked_entity->access('view') && $diff_enabled) {
+        $build['changes']['list'][$key]['operations']['#links']['revision_diff'] = [
+          'title' => t('View changes'),
+          'weight' => -5,
+          'url' => Url::fromRoute("entity.{$tracked_entity->getEntityTypeId()}.workspace.revisions_diff", [
+            $tracked_entity->getEntityTypeId() => $tracked_entity->id(),
+            'source_workspace' => $entity->id(),
+          ]),
+        ] + $modal_attributes;
+        $build['changes']['list'][$key]['operations']['#links']['revision_diff']['attributes']['data-dialog-options'] = Json::encode([
+          'width' => 1000,
+        ]);
+      }
+
+      if ($tracked_entity->access('update')) {
+        $build['changes']['list'][$key]['operations']['#links']['move_to_workspace'] = [
+          'title' => t('Move to another workspace'),
+          'weight' => 15,
+          'url' => $tracked_entity->toUrl('move-to-workspace')
+            ->setRouteParameter('source_workspace', $entity->id()),
+        ] + $modal_attributes;
+
+        $build['changes']['list'][$key]['operations']['#links']['discard_changes'] = [
+          'title' => t('Discard changes'),
+          'weight' => 15,
+          'url' => $tracked_entity->toUrl('discard-changes')
+            ->setRouteParameter('source_workspace', $entity->id()),
+        ] + $modal_attributes;
+      }
+      if (!empty($build['changes']['list'][$key]['operations']['#links'])) {
+        uasort($build['changes']['list'][$key]['operations']['#links'], [SortArray::class, 'sortByWeightElement']);
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function wse_theme($existing, $type, $theme, $path) {
+  return [
+    'wse_entity_status' => [
+      'variables' => [
+        'published' => NULL,
+        'draft' => NULL,
+        'workspace' => NULL,
+        'switch_to_workspace_link' => NULL,
+      ],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete().
+ *
+ * Deletes data about published revisions when a workspace gets deleted.
+ */
+function wse_workspace_delete(WorkspaceInterface $workspace) {
+  \Drupal::database()->delete(PublishedRevisionStorage::TABLE)
+    ->condition('workspace_id', $workspace->id())
+    ->execute();
+}
+
+/**
+ * Implements hook_field_info_alter().
+ */
+function wse_field_info_alter(&$definitions) {
+  if (isset($definitions['entity_reference'])) {
+    unset($definitions['entity_reference']['constraints']['EntityReferenceSupportedNewEntities']);
+    $definitions['entity_reference']['constraints']['WseEntityReferenceSupportedNewEntities'] = [];
+  }
+}
+
+/**
+ * Implements hook_entity_access().
+ */
+function wse_entity_access(EntityInterface $entity, $operation, AccountInterface $account): AccessResultInterface {
+  if (
+    !\Drupal::service('workspaces.information')->isEntitySupported($entity)
+    || !in_array($operation, ['revert revision', 'revert', 'delete revision'])
+  ) {
+    return AccessResult::neutral();
+  }
+
+  /** @var \Drupal\workspaces\WorkspaceAssociationInterface $workspace_association */
+  $workspace_association = \Drupal::service('workspaces.association');
+  $tracking_workspace_ids = $workspace_association->getEntityTrackingWorkspaceIds($entity, TRUE);
+  if ($tracking_workspace_id = reset($tracking_workspace_ids)) {
+    $active_workspace = \Drupal::service('workspaces.manager')->getActiveWorkspace();
+    if (!$active_workspace || $active_workspace->id() != $tracking_workspace_id) {
+      return AccessResult::forbidden()->addCacheContexts(['workspace']);
+    }
+  }
+
+  return AccessResult::neutral()->addCacheContexts(['workspace']);
+}

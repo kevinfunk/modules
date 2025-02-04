@@ -1,0 +1,4 @@
+enabled_config_entity_types:
+  - block
+  - menu
+  - view

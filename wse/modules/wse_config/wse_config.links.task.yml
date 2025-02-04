@@ -1,0 +1,14 @@
+entity.wse_config.view:
+  title: View
+  route_name: entity.wse_config.canonical
+  base_route: entity.wse_config.canonical
+entity.wse_config.delete_form:
+  title: Delete
+  route_name: entity.wse_config.delete_form
+  base_route: entity.wse_config.canonical
+  weight: 10
+entity.wse_config.collection:
+  title: Wse Config
+  route_name: entity.wse_config.collection
+  base_route: system.admin_content
+  weight: 10

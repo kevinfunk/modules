@@ -1,0 +1,143 @@
+/**
+ * @file
+ * Visual styles for buttons.
+ */
+
+#drupal-off-canvas-wrapper .active-workspace__actions {
+  margin-top: 10px;
+}
+#drupal-off-canvas-wrapper .active-workspace .button,
+#drupal-off-canvas-wrapper .active-workspace .image-button {
+  margin-right: 1em;
+  margin-left: 1em;
+}
+#drupal-off-canvas-wrapper .active-workspace .button:first-child,
+#drupal-off-canvas-wrapper .active-workspace .image-button:first-child {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+/**
+ * Spaces.
+ */
+:root {
+  --space-xl: 3rem; /* 3 * 16px = 48px */
+  --space-l: 1.5rem; /* 1.5 * 16px = 24px */
+  --space-m: 1rem; /* 1 * 16px = 16px */
+  --space-s: 0.75rem; /* 0.75 * 16px = 12px */
+  --space-xs: 0.5rem; /* 0.5 * 16px = 8px */
+}
+
+/**
+ * Action links layout.
+ */
+
+.wse-action-links {
+  margin: var(--space-m) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wse-action-link {
+  display: inline-block;
+  padding: calc(var(--space-s) - ((var(--space-l) - var(--space-s)) / 2)) 5px;
+  cursor: pointer;
+  -webkit-text-decoration: none;
+  text-decoration: none;
+  color: #55565b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: var(--space-l);
+  /* Bigger line-height needed to prevent the icon from increasing the height */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Action link states */
+.wse-action-link:hover {
+  -webkit-text-decoration: underline;
+  text-decoration: underline;
+  color: #55565b;
+}
+
+.wse-action-link:focus {
+  position: relative;
+  z-index: 1;
+  -webkit-text-decoration: underline;
+  text-decoration: underline;
+}
+
+.wse-action-link:active {
+  text-decoration: underline;
+}
+
+/**
+  * Action link icons with states.
+  *
+  * We use parent-relative units here to follow the .wse-action-link's font size.
+  */
+
+/* Defaults for icons */
+
+.wse-action-link::before {
+  position: relative;
+  inset-block-start: 0.125rem;
+  /* Set the proper vertical alignment */
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-inline: calc(var(--space-s) - var(--space-m)) 0.5em;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.wse-action-link + .wse-action-link {
+  margin-inline-start: var(--space-s);
+}
+
+/* Icons */
+.wse-action-link--icon-plus::before {
+  content: "";
+  background-image: url("data:image/svg+xml,%3csvg height='16' stroke='%23545560' stroke-width='2' width='16' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M3 8h10M8 3v10'/%3e%3c/svg%3e");
+}
+.wse-action-link--icon-cog::before {
+  content: "";
+  background-image: url("data:image/svg+xml,%3csvg height='16' fill='%23545560' width='16' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M15.426 9.249a7.29 7.29 0 00.076-.998c0-.36-.035-.71-.086-1.056l-2.275-.293a5.039 5.039 0 00-.498-1.201l1.396-1.808a7.3 7.3 0 00-1.459-1.452l-1.807 1.391a5.058 5.058 0 00-1.2-.499l-.292-2.252C8.943 1.033 8.604 1 8.252 1s-.694.033-1.032.082l-.291 2.251a5.076 5.076 0 00-1.2.499L3.924 2.441a7.3 7.3 0 00-1.459 1.452L3.86 5.701a5.076 5.076 0 00-.499 1.2l-2.276.294A7.35 7.35 0 001 8.251c0 .34.031.671.077.998l2.285.295c.115.426.284.826.499 1.2L2.444 12.58c.411.55.896 1.038 1.443 1.452l1.842-1.42c.374.215.774.383 1.2.498l.298 2.311c.337.047.677.08 1.025.08s.688-.033 1.021-.08l.299-2.311a5.056 5.056 0 001.201-.498l1.842 1.42a7.326 7.326 0 001.443-1.452l-1.416-1.837c.215-.373.383-.773.498-1.199zm-7.174 1.514a2.54 2.54 0 110-5.082 2.542 2.542 0 010 5.082z'/%3e%3c/svg%3e");
+}
+.wse-action-link--icon-list::before {
+  content: "";
+  background-image: url("data:image/svg+xml,%3Csvg height='16' viewBox='0 0 16 16' width='16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath clip-rule='evenodd' d='m15 9h-14c-.56016 0-1-.43984-1-1s.43984-1 1-1h14c.5602 0 1 .43984 1 1s-.4398 1-1 1zm0-5h-14c-.56016 0-1-.43984-1-1s.43984-1 1-1h14c.5602 0 1 .43984 1 1s-.4398 1-1 1zm-14 8h14c.5602 0 1 .4398 1 1s-.4398 1-1 1h-14c-.56016 0-1-.4398-1-1s.43984-1 1-1z' fill='%23545560' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+.wse-action-link--icon-show::before {
+  content: "";
+  background-image: url("data:image/svg+xml,%3csvg fill-rule='evenodd' height='16' fill='%23545560' width='16' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M8 3C4.364 3 1.258 5.073 0 8c1.258 2.927 4.364 5 8 5s6.742-2.073 8-5c-1.258-2.927-4.364-5-8-5zm0 8a3 3 0 100-6 3 3 0 000 6z'/%3e%3c/svg%3e");
+}
+
+/* Toolbar overrides */
+.toolbar .wse-workspace-switcher-form {
+  position: absolute;
+  z-index: 1000;
+  right: 0;
+  display: none;
+  min-width: 250px;
+  padding: 0 20px;
+  background-color: #f5f5f2;
+  box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.3333);
+}
+.toolbar .wse-workspace-switcher-form.is-active {
+  display: inherit;
+}
+.toolbar .workspaces-toolbar-tab {
+  position: relative;
+}
+.toolbar .wse-workspace-switcher-form .form-item__label {
+  font-size: 13px;
+}
+.toolbar .wse-workspace-switcher-form .form-element {
+  min-height: auto;
+  padding: 5px 40px 5px 10px;
+  font-size: 15px;
+}
+.toolbar .wse-workspace-switcher-form .form-item {
+  margin: var(--space-m) 0;
+}

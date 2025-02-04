@@ -1,0 +1,15 @@
+name: 'Workspaces Layout Builder'
+type: module
+description: 'Workspace specific layout_builder tweaks.'
+package: 'Workspaces'
+core_version_requirement: ^10.3 || ^11
+
+dependencies:
+  - drupal:block_content
+  - drupal:layout_builder
+  - wse:wse
+
+# Information added by Drupal.org packaging script on 2025-01-31
+version: '2.0.0-alpha8'
+project: 'wse'
+datestamp: 1738319441

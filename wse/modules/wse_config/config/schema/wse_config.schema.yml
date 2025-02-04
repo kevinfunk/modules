@@ -1,0 +1,10 @@
+# Schema for the configuration files of the workspace config module.
+wse_config.settings:
+  type: config_object
+  label: 'Workspace config settings'
+  mapping:
+    enabled_config_entity_types:
+      type: sequence
+      label: 'Enabled entity types for workspace-specific config.'
+      sequence:
+        type: string

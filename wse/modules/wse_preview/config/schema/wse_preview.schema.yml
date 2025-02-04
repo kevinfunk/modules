@@ -1,0 +1,10 @@
+wse_preview.settings:
+  type: config_object
+  strict: true
+  mapping:
+    preview_expiry_default:
+      label: 'Default value for the workspace preview expiry.'
+      type: string
+      nullable: true
+      constraints:
+        ValidPreviewExpiryPeriod: []

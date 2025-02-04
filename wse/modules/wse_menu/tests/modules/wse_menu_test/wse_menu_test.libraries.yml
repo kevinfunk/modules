@@ -1,0 +1,5 @@
+# Custom module library for general purposes.
+menu_styles:
+  css:
+    component:
+      css/wse-menu-test.css: {}

@@ -1,0 +1,10 @@
+access wse_config overview:
+  title: 'Access workspace config overview page'
+delete wse_config:
+  title: Delete workspace config
+create wse_config:
+  title: Create workspace config
+view wse_config:
+  title: View workspace config
+edit wse_config:
+  title: Edit workspace config

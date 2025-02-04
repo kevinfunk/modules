@@ -1,0 +1,220 @@
+<?php
+
+/**
+ * @file
+ * Contains install, update and uninstall functions for the WSE module.
+ */
+
+use Drupal\Core\Field\BaseFieldDefinition;
+
+/**
+ * Implements hook_schema().
+ */
+function wse_schema() {
+  $schema['workspace_published_revisions'] = [
+    'description' => 'Stores the revision IDs that were published when a workspace gets published.',
+    'fields' => [
+      'id' => [
+        'description' => 'The record id.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'workspace_id' => [
+        'type' => 'varchar_ascii',
+        'length' => 128,
+        'not null' => TRUE,
+        'description' => 'The ID of the workspace containing the stored revision IDs.',
+      ],
+      'workspace_label' => [
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'description' => 'The label of the workspace containing the stored revision IDs.',
+      ],
+      'published_on' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The timestamp of the publishing date of the workspace.',
+      ],
+      'published_revision_ids' => [
+        'description' => 'The published revision IDs.',
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => TRUE,
+      ],
+      'all_revision_ids' => [
+        'description' => 'All revision IDs.',
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => FALSE,
+      ],
+      'revert_revision_ids' => [
+        'description' => 'The revision IDs to revert to.',
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => TRUE,
+      ],
+    ],
+    'primary key' => ['id'],
+  ];
+
+  return $schema;
+}
+
+/**
+ * Create the 'workspace_published_revisions' table.
+ */
+function wse_update_9001() {
+  $spec = [
+    'description' => 'Stores the revision IDs that were published when a workspace gets published.',
+    'fields' => [
+      'id' => [
+        'description' => 'The record ID.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'workspace_id' => [
+        'type' => 'varchar_ascii',
+        'length' => 128,
+        'not null' => TRUE,
+        'description' => 'The ID of the workspace containing the stored revision IDs.',
+      ],
+      'workspace_label' => [
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'description' => 'The label of the workspace containing the stored revision IDs.',
+      ],
+      'published_on' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The timestamp of the publishing date of the workspace.',
+      ],
+      'published_revision_ids' => [
+        'description' => 'The published revision IDs.',
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => TRUE,
+      ],
+      'all_revision_ids' => [
+        'description' => 'All revision IDs.',
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => FALSE,
+      ],
+    ],
+    'primary key' => ['id'],
+  ];
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('workspace_published_revisions')) {
+    $schema->createTable('workspace_published_revisions', $spec);
+  }
+}
+
+/**
+ * Adds the 'revert_revision_ids' column to the published revisions tracker.
+ */
+function wse_update_9002() {
+  $spec = [
+    'description' => 'The revision IDs to revert to.',
+    'type' => 'blob',
+    'size' => 'big',
+    'not null' => TRUE,
+    'default' => '',
+  ];
+  $schema = \Drupal::database()->schema();
+  if (!$schema->fieldExists('workspace_published_revisions', 'revert_revision_ids')) {
+    $schema->addField('workspace_published_revisions', 'revert_revision_ids', $spec);
+  }
+}
+
+/**
+ * Rename the previous 'rollback_revision_ids' column to the new name.
+ */
+function wse_update_9003() {
+  $spec = [
+    'description' => 'The revision IDs to revert to.',
+    'type' => 'blob',
+    'size' => 'big',
+    'not null' => TRUE,
+    'default' => '',
+  ];
+  $schema = \Drupal::database()->schema();
+  if ($schema->fieldExists('workspace_published_revisions', 'rollback_revision_ids')) {
+    if (!$schema->fieldExists('workspace_published_revisions', 'revert_revision_ids')) {
+      $schema->changeField('workspace_published_revisions', 'rollback_revision_ids', 'revert_revision_ids', $spec);
+    }
+    else {
+      $schema->dropField('workspace_published_revisions', 'rollback_revision_ids');
+    }
+  }
+}
+
+/**
+ * Add the status field to workspaces.
+ */
+function wse_update_9004() {
+  $storage_definition = BaseFieldDefinition::create('list_string')
+    ->setLabel(t('Status'))
+    ->setDescription(t('The workspace status.'))
+    ->setStorageRequired(TRUE)
+    ->setSetting('allowed_values', [
+      WSE_STATUS_OPEN => t('Open'),
+      WSE_STATUS_CLOSED => t('Closed'),
+    ])
+    ->setDefaultValue(WSE_STATUS_OPEN)
+    ->setInitialValue(WSE_STATUS_OPEN);
+
+  $entity_definition_update = \Drupal::entityDefinitionUpdateManager();
+  $entity_definition_update->installFieldStorageDefinition('status', 'workspace', 'wse', $storage_definition);
+}
+
+/**
+ * Fix the SQL encoding type for the 'workspace_label' column.
+ */
+function wse_update_9005() {
+  \Drupal::database()
+    ->schema()
+    ->changeField('workspace_published_revisions', 'workspace_label', 'workspace_label', [
+      'type' => 'varchar',
+      'length' => 128,
+      'not null' => TRUE,
+      'description' => 'The label of the workspace containing the stored revision IDs.',
+    ]);
+}
+
+/**
+ * Clean up workspace metadata for ignored entity types.
+ */
+function wse_update_10001(): void {
+  $entity_definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  /** @var \Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface $last_installed_schema_repository */
+  $last_installed_schema_repository = \Drupal::service('entity.last_installed_schema.repository');
+
+  $ignored_entity_types = [
+    'crop',
+    'events_logging',
+    'file',
+    'paragraph',
+    'redirect',
+    'variant',
+  ];
+  foreach ($ignored_entity_types as $entity_type_id) {
+    if ($entity_type = $entity_definition_update_manager->getEntityType($entity_type_id)) {
+      // Remove the 'workspace' field.
+      if ($field_storage = $entity_definition_update_manager->getFieldStorageDefinition('workspace', $entity_type_id)) {
+        $entity_definition_update_manager->uninstallFieldStorageDefinition($field_storage);
+      }
+
+      // Remove the 'workspace' revision metadata key.
+      $revision_metadata_keys = $entity_type->getRevisionMetadataKeys();
+      unset($revision_metadata_keys['workspace']);
+      $entity_type->set('revision_metadata_keys', $revision_metadata_keys);
+      $last_installed_schema_repository->setLastInstalledDefinition($entity_type);
+    }
+  }
+}

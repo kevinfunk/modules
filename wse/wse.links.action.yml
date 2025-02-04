@@ -1,0 +1,5 @@
+wse.publish_workspace:
+  route_name: entity.workspace.publish_form
+  title: 'Publish content'
+  appears_on:
+    - entity.workspace.canonical

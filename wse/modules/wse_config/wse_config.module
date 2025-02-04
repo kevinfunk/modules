@@ -1,0 +1,112 @@
+<?php
+
+/**
+ * @file
+ * Provides a revisionable content storage for config entities.
+ */
+
+use Drupal\Core\Config\Entity\ConfigEntityInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\ConfigFormBase;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\views\Form\ViewsForm;
+use Drupal\views_ui\Form\Ajax\ViewsFormBase;
+use Drupal\views_ui\ViewFormBase;
+use Drupal\workspaces\Entity\Handler\IgnoredWorkspaceHandler;
+use Drupal\wse_config\EntityAccess;
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function wse_config_entity_type_alter(array &$entity_types) {
+  $enabled_entity_types = \Drupal::config('wse_config.settings')
+    ->get('enabled_config_entity_types');
+
+  if (!$enabled_entity_types) {
+    return;
+  }
+
+  foreach ($enabled_entity_types as $entity_type) {
+    if (!empty($entity_types[$entity_type])) {
+      /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
+      $entity_types[$entity_type]->setHandlerClass('workspace', IgnoredWorkspaceHandler::class);
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function wse_config_form_wse_settings_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $config = \Drupal::config('wse_config.settings');
+  $form['types_wrapper'] = [
+    '#type' => 'details',
+    '#title' => t('Enabled entity types'),
+    '#open' => TRUE,
+  ];
+  $available_entity_types = \Drupal::service('wse_config.config_matcher')
+    ->getAllowedConfigEntityTypes();
+  ksort($available_entity_types, SORT_STRING);
+  $form['types_wrapper']['enabled_config_entity_types'] = [
+    '#type' => 'select',
+    '#multiple' => TRUE,
+    '#size' => 10,
+    '#title' => t('Enabled config entity types'),
+    '#default_value' => $config->get('enabled_config_entity_types'),
+    '#options' => $available_entity_types,
+    '#description' => t('Enabled config entity types can be created/edited/deleted inside workspaces'),
+  ];
+  $form['#submit'][] = 'wse_config_settings_form_submit';
+}
+
+/**
+ * Additional submit handler for altered wse settings form.
+ */
+function wse_config_settings_form_submit(array &$form, FormStateInterface $form_state) {
+  $config = \Drupal::configFactory()->getEditable('wse_config.settings');
+  $enabled_types = array_values($form_state->getValue('enabled_config_entity_types'));
+  if ($enabled_types != $config->get('enabled_config_entity_types')) {
+    $config->set('enabled_config_entity_types', $enabled_types)
+      ->save();
+    \Drupal::cache('discovery')->deleteAll();
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function wse_config_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+  /** @var \Drupal\Core\Entity\EntityFormInterface|NULL $callback_object */
+  $callback_object = $form_state->getBuildInfo()['callback_object'] ?? NULL;
+  if (
+    (
+      $callback_object
+      && method_exists($callback_object, 'getEntity')
+      && $callback_object->getEntity() instanceof ConfigEntityInterface
+      && array_key_exists(
+        $callback_object->getEntity()->getEntityTypeId(),
+        \Drupal::service('wse_config.config_matcher')->getAllowedConfigEntityTypes()
+      )
+    )
+    || $form_state->getFormObject() instanceof ConfigFormBase
+    || $form_state->getFormObject() instanceof ViewsForm
+    || $form_state->getFormObject() instanceof ViewsFormBase
+    || $form_state->getFormObject() instanceof ViewFormBase
+  ) {
+    $form_state->set('workspace_safe', TRUE);
+  }
+}
+
+/**
+ * Implements hook_entity_access().
+ *
+ * @todo Support deleting of config that is active in live. The implementation
+ *   here will disallow deletion of config entities, which are active in live,
+ *   inside a workspace.
+ */
+function wse_config_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  return \Drupal::service('class_resolver')
+    ->getInstanceFromDefinition(EntityAccess::class)
+    ->entityOperationAccess($entity, $operation, $account);
+}

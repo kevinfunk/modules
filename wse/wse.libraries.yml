@@ -1,0 +1,25 @@
+current-workspace:
+  version: VERSION
+  js:
+    js/current-workspace.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupalSettings
+    - core/once
+entity-status:
+  version: VERSION
+  css:
+    component:
+      css/wse-entity-status.css: {}
+
+form-submit-dialog:
+  version: VERSION
+  js:
+    js/form-submit-dialog.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/jquery
+    - core/once
+    - core/drupal.dialog

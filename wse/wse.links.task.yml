@@ -1,0 +1,5 @@
+wse.settings:
+  route_name: wse.settings
+  title: 'Settings'
+  weight: 20
+  base_route: entity.workspace.collection

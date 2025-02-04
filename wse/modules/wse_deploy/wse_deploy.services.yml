@@ -1,0 +1,57 @@
+services:
+  wse_deploy.negotiator.json_api:
+    class: Drupal\wse_deploy\JsonApiWorkspaceNegotiator
+    tags:
+      - { name: workspace_negotiator, priority: 150 }
+
+  wse_deploy.workspace_exporter:
+    class: Drupal\wse_deploy\WorkspaceExporter
+    arguments:
+      - '@entity_type.manager'
+      - '@workspaces.association'
+      - '@jsonapi.serializer'
+      - '@jsonapi.resource_type.repository'
+      - '@config.factory'
+      - '@file_system'
+      - '@event_dispatcher'
+      - '@wse_deploy.encryption_handler'
+  wse_deploy.workspace_importer:
+    class: Drupal\wse_deploy\WorkspaceImporter
+    arguments:
+      - '@database'
+      - '@entity_type.manager'
+      - '@entity.repository'
+      - '@file_system'
+      - '@jsonapi.serializer'
+      - '@jsonapi.resource_type.repository'
+      - '@workspaces.manager'
+      - '@wse.workspace_reverter'
+      - '@wse_deploy.encryption_handler'
+      - '@account_switcher'
+      - '@current_user'
+      - '@logger.channel.wse_deploy'
+
+  plugin.manager.wse_deploy.workspace_export:
+    class: Drupal\wse_deploy\WorkspaceExportPluginManager
+    parent: default_plugin_manager
+
+  wse_deploy.export_handler:
+    class: Drupal\wse_deploy\EventSubscriber\ExportHandler
+    arguments: ['@config.factory', '@plugin.manager.wse_deploy.workspace_export']
+    tags:
+      - { name: event_subscriber }
+  wse_deploy.pipeline_handler:
+    class: Drupal\wse_deploy\EventSubscriber\PipelineHandler
+    arguments: ['@config.factory']
+    tags:
+      - { name: event_subscriber }
+
+  wse_deploy.encryption_handler:
+    class: Drupal\wse_deploy\EncryptionHandler
+    arguments:
+      - '@private_key'
+      - '@datetime.time'
+
+  logger.channel.wse_deploy:
+    parent: logger.channel_base
+    arguments: ['wse_deploy']

@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for wse_menu_test module.
+ *
+ * @DCG
+ * This file is no longer required in Drupal 8.
+ * @see https://www.drupal.org/node/2217931
+ */
+
+use Drupal\workspaces\Entity\Handler\IgnoredWorkspaceHandler;
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function wse_menu_test_entity_type_build(array &$entity_types) {
+  // For testing purposes, allow some entity types to be manipulated inside a
+  // workspace.
+  // @see \Drupal\Tests\wse_menu\Kernel\WseMenuLinksTest::testMenuLinkOnEntityDelete
+  /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
+  if (isset($entity_types['user'])) {
+    $entity_types['user']->setHandlerClass('workspace', IgnoredWorkspaceHandler::class);
+  }
+  if (isset($entity_types['entity_test_external'])) {
+    $entity_types['entity_test_external']->setHandlerClass('workspace', IgnoredWorkspaceHandler::class);
+  }
+  if (isset($entity_types['block'])) {
+    $entity_types['block']->setHandlerClass('workspace', IgnoredWorkspaceHandler::class);
+  }
+}
+
+/**
+ * Implements hook_page_attachments().
+ */
+function wse_menu_test_page_attachments(array &$attachments) {
+  $attachments['#attached']['library'][] = 'wse_menu_test/menu_styles';
+}

@@ -1,0 +1,220 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for Workspaces Menu module.
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\menu_link_content\MenuLinkContentInterface;
+use Drupal\workspaces\Entity\Handler\IgnoredWorkspaceHandler;
+use Drupal\workspaces\WorkspaceInterface;
+use Drupal\wse_menu\EventSubscriber\WseMenuRequestSubscriber;
+
+/**
+ * Implements hook_entity_type_build().
+ */
+function wse_menu_entity_type_build(array &$entity_types) {
+  /** @var \Drupal\Core\Entity\EntityTypeInterface[] $entity_types */
+  if (isset($entity_types['menu'])) {
+    $entity_types['menu']
+      ->set('internal', TRUE)
+      ->setHandlerClass('workspace', IgnoredWorkspaceHandler::class)
+      ->setFormClass('add', 'Drupal\wse_menu\Form\WseMenuForm')
+      ->setFormClass('edit', 'Drupal\wse_menu\Form\WseMenuForm');
+  }
+
+  if (isset($entity_types['group_content_menu'])) {
+    if ($entity_types['group_content_menu']->hasHandlerClass('workspace')) {
+      $entity_types['group_content_menu']->setFormClass('add', 'Drupal\wse_menu\Form\WseGroupContentMenuForm');
+      $entity_types['group_content_menu']->setFormClass('edit', 'Drupal\wse_menu\Form\WseGroupContentMenuForm');
+    }
+    else {
+      // The 'group_content_menu' entity type is not revisionable or
+      // publishable, so we mark it as 'ignored' in a workspace, which allows
+      // its form to be submitted. However, the 'WseUnsupportedEntityType'
+      // validation constraint added by wse_entity_type_alter() won't allow any
+      // changes to the entity itself.
+      // @see wse_menu_form_group_content_menu_form_alter()
+      // @see wse_entity_type_alter()
+      $entity_types['group_content_menu']->setHandlerClass('workspace', IgnoredWorkspaceHandler::class);
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function wse_menu_entity_type_alter(array &$entity_types) {
+  // Remove the MenuTreeHierarchy and MenuSettings constraints, since our tree
+  // storage supports changing a link's parent in pending revisions.
+  if (isset($entity_types['menu_link_content'])) {
+    $constraints = $entity_types['menu_link_content']->getConstraints();
+    unset($constraints['MenuTreeHierarchy']);
+    $entity_types['menu_link_content']->setConstraints($constraints);
+  }
+  if (isset($entity_types['node'])) {
+    $constraints = $entity_types['node']->getConstraints();
+    unset($constraints['MenuSettings']);
+    $entity_types['node']->setConstraints($constraints);
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function wse_menu_form_menu_link_edit_alter(&$form, FormStateInterface $form_state) {
+  $form_state->set('workspace_safe', TRUE);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function wse_menu_form_menu_link_reset_confirm_alter(&$form, FormStateInterface $form_state) {
+  $form_state->set('workspace_safe', TRUE);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for 'group_content_menu_form'.
+ */
+function wse_menu_form_group_content_menu_form_alter(&$form, FormStateInterface $form_state) {
+  // Allow this form to be submitted in a workspace, in order to allow changes
+  // to the menu links of a group menu.
+  $form_state->set('workspace_safe', TRUE);
+}
+
+/**
+ * Implements hook_entity_base_field_info_alter().
+ */
+function wse_menu_entity_base_field_info_alter(&$fields, EntityTypeInterface $entity_type) {
+  if ($entity_type->id() === 'menu_link_content') {
+    $fields['expanded']->setRevisionable(TRUE);
+    $fields['parent']->setRevisionable(TRUE);
+    $fields['weight']->setRevisionable(TRUE);
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert().
+ */
+function wse_menu_menu_link_content_insert() {
+  wse_menu_set_menu_rebuild_flag();
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update().
+ */
+function wse_menu_menu_link_content_update(MenuLinkContentInterface $entity) {
+  if (!$entity->isSyncing()) {
+    wse_menu_set_menu_rebuild_flag();
+  }
+
+  if (!\Drupal::service('workspaces.manager')->hasActiveWorkspace()) {
+    return;
+  }
+
+  // Don't run if the entity is being deleted by the Trash module.
+  if (\Drupal::moduleHandler()->moduleExists('trash') && trash_entity_is_deleted($entity)) {
+    return;
+  }
+
+  // Don't run if the entity is going through a workflow transition.
+  if (isset($entity->_entityWorkflowEnforceNoNewRevision)) {
+    return;
+  }
+
+  // The following code is borrowed from MenuLinkContent::postSave(), the
+  // implementation there does not update the tree if the saved revision is not
+  // the default revision, which can't ever be the case inside a workspace.
+  /** @var \Drupal\Core\Menu\MenuLinkManagerInterface $menu_link_manager */
+  $menu_link_manager = \Drupal::service('plugin.manager.menu.link');
+  $definition = $entity->getPluginDefinition();
+  if ($definition && $menu_link_manager->getDefinition($entity->getPluginId(), FALSE)) {
+    if (!$entity->insidePlugin) {
+      $menu_link_manager->updateDefinition($entity->getPluginId(), $definition, FALSE);
+    }
+  }
+  else {
+    $menu_link_manager->addDefinition($entity->getPluginId(), $definition);
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for the 'workspace' entity type.
+ */
+function wse_menu_workspace_insert(WorkspaceInterface $workspace): void {
+  // Create the workspace-specific menu tree for the newly added workspace.
+  \Drupal::service('wse_menu.tree_storage')->rebuildWorkspaceMenuTree($workspace, FALSE);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete() for the 'workspace' entity type.
+ */
+function wse_menu_workspace_delete(WorkspaceInterface $workspace): void {
+  // Delete the workspace-specific menu tree for the deleted workspace.
+  \Drupal::service('wse_menu.tree_storage')->cleanupWorkspaceMenuTree($workspace);
+}
+
+/**
+ * Implements hook_menu_links_discovered_alter().
+ */
+function wse_menu_menu_links_discovered_alter(&$links) {
+  // Swap the plugin class for menu links provided by Views, so they can be
+  // updated in a workspace without having to save the view.
+  foreach ($links as &$link) {
+    if (isset($link['provider']) && $link['provider'] === 'views') {
+      $link['class'] = 'Drupal\wse_menu\WseViewsMenuLink';
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access() for 'group_content_menu'.
+ */
+function wse_menu_group_content_menu_access(EntityInterface $entity, $operation): AccessResultInterface {
+  /** @var \Drupal\workspaces\WorkspaceInformationInterface $workspace_info */
+  $workspace_info = \Drupal::service('workspaces.information');
+  if ($workspace_info->isEntitySupported($entity)) {
+    return AccessResult::neutral();
+  }
+
+  // Disallow 'delete' access for 'group_content_menu' entities in a workspace.
+  // @see \Drupal\wse_menu\Routing\RouteSubscriber::alterRoutes()
+  if ($operation === 'delete') {
+    return AccessResult::forbiddenIf(\Drupal::service('workspaces.manager')->hasActiveWorkspace())
+      ->addCacheContexts(['workspace']);
+  }
+  return AccessResult::neutral();
+}
+
+/**
+ * Sets the wse_menu_tree_needs_rebuild flag.
+ */
+function wse_menu_set_menu_rebuild_flag(): void {
+  /** @var \Drupal\workspaces\WorkspaceManagerInterface $workspaceManager */
+  $workspaceManager = \Drupal::service('workspaces.manager');
+
+  // Only set the rebuild flag if changes are made in the "Live" workspace.
+  if ($workspaceManager->hasActiveWorkspace()) {
+    return;
+  }
+
+  while (!\Drupal::lock()->acquire(WseMenuRequestSubscriber::LOCK_REBUILD)) {
+    \Drupal::lock()->wait(WseMenuRequestSubscriber::LOCK_REBUILD);
+  }
+
+  /** @var \Drupal\workspaces\WorkspaceInterface[] $workspaces */
+  $workspaces = \Drupal::service('entity_type.manager')->getStorage('workspace')->loadMultiple();
+
+  $rebuild_menu = [];
+  foreach ($workspaces as $workspace) {
+    $rebuild_menu[$workspace->id()] = TRUE;
+  }
+
+  \Drupal::state()->set(WseMenuRequestSubscriber::STATE_REBUILD_FLAGS, $rebuild_menu);
+  \Drupal::lock()->release(WseMenuRequestSubscriber::LOCK_REBUILD);
+}

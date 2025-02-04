@@ -1,0 +1,15 @@
+name: 'Workspaces Menu'
+type: module
+description: 'Provides the ability to stage menu link changes in workspaces.'
+package: 'Workspaces'
+core_version_requirement: ^10.3 || ^11
+
+dependencies:
+  - drupal:workspaces
+  - drupal:menu_ui
+  - wse:wse
+
+# Information added by Drupal.org packaging script on 2025-01-31
+version: '2.0.0-alpha8'
+project: 'wse'
+datestamp: 1738319441

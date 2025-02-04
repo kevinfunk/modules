@@ -1,0 +1,50 @@
+services:
+  wse.workspaces.manager:
+    public: false
+    class: Drupal\wse\WseWorkspaceManager
+    decorates: workspaces.manager
+    arguments: ['@.inner', '@request_stack', '@tempstore.private', '@datetime.time']
+  wse.workspaces.association:
+    public: false
+    class: Drupal\wse\WseWorkspaceAssociation
+    decorates: workspaces.association
+    arguments: ['@.inner', '@entity_type.manager', '@database', '@logger.channel.workspaces']
+    tags:
+      - { name: backend_overridable }
+      - { name: event_subscriber }
+  wse.workspaces.lazy_builders:
+    public: false
+    class: Drupal\wse\WseWorkspacesLazyBuilders
+    decorates: workspaces.lazy_builders
+    arguments: ['@.inner', '@config.factory', '@form_builder']
+
+  wse.event_subscriber:
+    class: Drupal\wse\EventSubscriber\WorkspacePublishingEventSubscriber
+    arguments: ['@workspaces.manager', '@workspaces.association', '@config.factory', '@wse.published_revision_storage', '@queue']
+    tags:
+      - { name: event_subscriber }
+
+  wse.route_subscriber:
+    class: Drupal\wse\Routing\RouteSubscriber
+    arguments: ['@entity_type.manager', '@workspaces.information', '@module_handler']
+    tags:
+      - { name: event_subscriber }
+
+  wse.path_processor:
+    class: Drupal\wse\PathProcessor\WsePathProcessor
+    arguments: ['@workspaces.manager', '@config.factory']
+    tags:
+      - { name: path_processor_outbound }
+
+  access_check.workspace_status:
+    class: Drupal\wse\Access\WorkspaceStatusAccess
+    tags:
+      - { name: access_check, applies_to: _workspace_status }
+
+  wse.published_revision_storage:
+    class: Drupal\wse\PublishedRevisionStorage
+    arguments: ['@entity_type.manager', '@workspaces.association', '@database', '@datetime.time', '@workspaces.manager', '@workspaces.information']
+
+  wse.workspace_reverter:
+    class: Drupal\wse\WorkspaceReverter
+    arguments: ['@entity_type.manager', '@database', '@workspaces.manager', '@workspaces.association', '@wse.published_revision_storage', '@event_dispatcher']
